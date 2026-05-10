@@ -1,0 +1,415 @@
+{
+  "name": "DORA Incident Response Agent",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        0
+      ],
+      "id": "7de92f54-2ad7-41a4-b379-6c697b223735",
+      "name": "When clicking 'Execute workflow'"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"incident_id\": \"INC-2025-0042\",\n  \"detected_at\": \"2026-05-07T08:15:00Z\",\n  \"incident_type\": \"data_breach_unauthorized_access\",\n  \"affected_service_id\": \"SVC-PAY-001\",\n  \"affected_service_name\": \"Plateforme de paiement en ligne\",\n  \"compromised_data_categories\": [\"pii_clients\", \"iban\", \"transaction_history\"],\n  \"estimated_clients_affected\": 145000,\n  \"duration_minutes_so_far\": 180,\n  \"geographical_scope\": [\"FR\", \"BE\", \"LU\"],\n  \"detection_source\": \"Microsoft Sentinel\",\n  \"short_description\": \"Acces non autorise detecte sur la base de donnees clients via SQL injection sur API de paiement. Exfiltration confirmee de PII et IBAN.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        176,
+        0
+      ],
+      "id": "a0cfe4f3-1058-4ac2-8f3a-54a1c8140eef",
+      "name": "Mock Incident SIEM"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperer l'incident venant du node precedent\nconst incident = $input.first().json;\n\n// Mini CMDB simule (en production : Google Sheets / ServiceNow / API interne)\nconst cmdb = {\n  \"SVC-PAY-001\": {\n    name: \"Plateforme de paiement en ligne\",\n    criticality: \"critical\",\n    is_critical_function: true,\n    business_owner: \"Direction Paiements\",\n    rto_minutes: 60\n  },\n  \"SVC-CORE-002\": {\n    name: \"Core banking\",\n    criticality: \"critical\",\n    is_critical_function: true,\n    business_owner: \"Direction SI Bancaire\",\n    rto_minutes: 30\n  },\n  \"SVC-CRM-003\": {\n    name: \"CRM commercial\",\n    criticality: \"non_critical\",\n    is_critical_function: false,\n    business_owner: \"Direction Commerciale\",\n    rto_minutes: 480\n  }\n};\n\n// Lookup de la criticite du service\nconst serviceInfo = cmdb[incident.affected_service_id] || {\n  name: \"Service inconnu\",\n  criticality: \"unknown\",\n  is_critical_function: false\n};\n\n// Estimation de l'impact economique (regle simplifiee POC)\n// 50 EUR par client impacte + 10 000 EUR par heure de downtime pour service critique\nconst downtimeCost = serviceInfo.is_critical_function\n  ? (incident.duration_minutes_so_far / 60) * 10000\n  : 0;\nconst clientImpactCost = (incident.estimated_clients_affected || 0) * 50;\nconst economicImpactEur = Math.round(downtimeCost + clientImpactCost);\n\n// Renvoyer l'incident enrichi\nreturn [{\n  json: {\n    ...incident,\n    service_info: serviceInfo,\n    economic_impact_eur: economicImpactEur,\n    enriched_at: new Date().toISOString()\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d0258258-8052-4009-a936-1ace4e5fdf42",
+      "name": "Enrichissement contexte Incident"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5-20250929",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        496,
+        208
+      ],
+      "id": "f4f5eb86-f900-4f9e-8c6a-7ee1509030bd",
+      "name": "Anthropic Chat Model"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"classification\": \"major\",\n  \"criteria_assessment\": {\n    \"clients_affected\": { \"value\": 145000, \"threshold_met\": true },\n    \"reputational_impact\": { \"level\": \"high\", \"rationale\": \"exemple de rationale\" },\n    \"duration_minutes\": { \"value\": 180, \"threshold_met\": true },\n    \"geographical_spread\": { \"member_states\": 3, \"threshold_met\": true },\n    \"data_losses\": { \"ciaa_impacted\": [\"confidentiality\", \"integrity\"], \"material\": true },\n    \"service_criticality\": { \"is_critical_function\": true },\n    \"economic_impact_eur\": { \"value\": 7280000, \"threshold_met\": true }\n  },\n  \"justification\": \"Exemple de justification en francais\",\n  \"deadlines_utc\": {\n    \"initial_notification_due\": \"2026-05-07T12:15:00Z\",\n    \"intermediate_report_due\": \"2026-05-10T08:15:00Z\",\n    \"final_report_due\": \"2026-06-06T08:15:00Z\"\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        208
+      ],
+      "id": "744dd8ac-2ee8-4944-bd85-5d445b514490",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.classification }}",
+                    "rightValue": "=major",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "829db798-0998-4d94-91f3-7df259a62009"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Incident Majeur"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Autre"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        0
+      ],
+      "id": "65d7eb60-636a-4ff2-b809-ea0ddad29333",
+      "name": "Routage Classification"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate the initial DORA notification draft for the following major incident.\n\nINCIDENT DATA (original SIEM + enriched context):\n{{ JSON.stringify($('Enrichissement contexte Incident').item.json, null, 2) }}\n\nCLASSIFICATION RESULT:\n{{ JSON.stringify($json.output, null, 2) }}",
+        "options": {
+          "systemMessage": "You are a DORA incident reporting specialist for a French financial entity.\n\nYour task: produce a draft INITIAL NOTIFICATION (DORA Article 19 §1) for a major ICT-related cybersecurity incident, in French, ready for review by the compliance team before submission to the competent authority (ACPR / Banque de France).\n\nThe draft must follow Commission Implementing Regulation (EU) 2024/2956 (ITS on incident reporting) format for the initial notification (4-hour deadline after classification as major).\n\nRequired structure (use these exact markdown headers):\n\n# Notification initiale d'incident TIC majeur (DORA Art. 19 §1)\n\n## 1. Identification de l'entité declarante\n- Entite : [A COMPLETER PAR LA CONFORMITE]\n- Code LEI : [A COMPLETER]\n- Personne referente : [A COMPLETER]\n\n## 2. Identification de l'incident\n- Reference interne\n- Type d'incident\n- Date et heure de detection (UTC)\n- Date et heure de classification comme majeur\n\n## 3. Description sommaire\n- Nature de l'incident\n- Vecteur d'attaque (si connu)\n- Categories de donnees impactees\n\n## 4. Perimetre d'impact\n- Service(s) affecte(s) et criticite (DORA Art. 8)\n- Nombre estime de clients impactes\n- Etalement geographique (Etats membres)\n- Duree constatee a ce stade\n\n## 5. Evaluation preliminaire\n- Criteres DORA declenches (lister chaque critere atteint)\n- Impact economique estime\n\n## 6. Actions de remediation initiales\n- Mesures deja mises en oeuvre (si information disponible, sinon \"A COMPLETER\")\n- Actions en cours\n\n## 7. Echeances de reporting suivantes\n- Rapport intermediaire du le : <ISO datetime>\n- Rapport final du le : <ISO datetime>\n\n## 8. Contacts\n- Cellule conformite : [A COMPLETER]\n\nTONE & STYLE:\n- Formal, factual, neutral. No speculation, no alarmist language.\n- Use passive voice where appropriate (regulatory tone).\n- French language only (with proper accents in the actual output).\n- Total length under 700 words.\n\nDO NOT:\n- Invent facts not present in the input data.\n- Provide opinions or recommendations to the authority.\n- Use English terms when a French equivalent exists.\n\nOutput ONLY the markdown notification. No commentary before or after."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1312,
+        -112
+      ],
+      "id": "7f5194dd-0d0b-463f-a658-6117fd38fafc",
+      "name": "Redaction Notification Initiale"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-4-5-20250929",
+          "cachedResultName": "Claude Sonnet 4.5"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1280,
+        80
+      ],
+      "id": "048067c7-ea1b-4976-8e01-ba48a0497d86",
+      "name": "Anthropic Chat Model1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Registre Incidents DORA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp_processed": "={{ $now.toISO() }}",
+            "incident_id": "={{ $('Enrichissement contexte Incident').item.json.incident_id }}",
+            "detected_at": "={{ $('Enrichissement contexte Incident').item.json.detected_at }}",
+            "classification": "={{ $('DORA/NIS AGENT CLASSIFICATION INCIDENT').item.json.output.classification }}",
+            "service_id": "={{ $('Enrichissement contexte Incident').item.json.affected_service_id }}",
+            "service_name": "={{ $('Enrichissement contexte Incident').item.json.affected_service_name }}",
+            "is_critical_function": "={{ $('Enrichissement contexte Incident').item.json.service_info.is_critical_function }}",
+            "clients_affected": "={{ $('Enrichissement contexte Incident').item.json.estimated_clients_affected }}",
+            "duration_minutes": "={{ $('Enrichissement contexte Incident').item.json.duration_minutes_so_far }}",
+            "countries": "={{ $('Enrichissement contexte Incident').item.json.geographical_scope.join(', ') }}",
+            "economic_impact_eur": "={{ $('Enrichissement contexte Incident').item.json.economic_impact_eur }}",
+            "justification": "={{ $('DORA/NIS AGENT CLASSIFICATION INCIDENT').item.json.output.justification }}",
+            "initial_notification_due": "={{ $('DORA/NIS AGENT CLASSIFICATION INCIDENT').item.json.output.deadlines_utc.initial_notification_due }}",
+            "intermediate_report_due": "={{ $('DORA/NIS AGENT CLASSIFICATION INCIDENT').item.json.output.deadlines_utc.intermediate_report_due }}",
+            "final_report_due": "={{ $('DORA/NIS AGENT CLASSIFICATION INCIDENT').item.json.output.deadlines_utc.final_report_due }}",
+            "notification_draft": "={{ $json.output }}",
+            "status": "draft_to_review"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {"id": "timestamp_processed", "displayName": "timestamp_processed", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "incident_id", "displayName": "incident_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "detected_at", "displayName": "detected_at", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "classification", "displayName": "classification", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "service_id", "displayName": "service_id", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "service_name", "displayName": "service_name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "is_critical_function", "displayName": "is_critical_function", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "clients_affected", "displayName": "clients_affected", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "duration_minutes", "displayName": "duration_minutes", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "countries", "displayName": "countries", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "economic_impact_eur", "displayName": "economic_impact_eur", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "justification", "displayName": "justification", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "initial_notification_due", "displayName": "initial_notification_due", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "intermediate_report_due", "displayName": "intermediate_report_due", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "final_report_due", "displayName": "final_report_due", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "notification_draft", "displayName": "notification_draft", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "status", "displayName": "status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true}
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1664,
+        -112
+      ],
+      "id": "9252a5f3-a49d-405f-aa9c-bf499f122aae",
+      "name": "Registre Incidents"
+    },
+    {
+      "parameters": {
+        "sendTo": "REPLACE_WITH_RECIPIENT_EMAIL@example.com",
+        "subject": "= [DORA] Incident majeur {{ $('Enrichissement contexte Incident').item.json.incident_id }} - Action requise sous 4h",
+        "emailType": "text",
+        "message": "={{ $json.output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1664,
+        80
+      ],
+      "id": "93004d55-82f8-4f27-87a8-08efe799c679",
+      "name": "Email Cellule Conformite"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Classify this cybersecurity incident according to DORA Article 18.\n\nIncident data:\n{{ JSON.stringify($json, null, 2) }}\n\nReturn ONLY a valid JSON object matching the schema in your instructions. No markdown, no prose outside the JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are a DORA compliance analyst for a financial entity.\n\nClassify ICT-related cybersecurity incidents according to Commission Delegated Regulation (EU) 2024/1772 (RTS on classification of major incidents).\n\nThe 7 DORA Article 18 criteria:\n1. Clients, financial counterparts and transactions affected\n2. Reputational impact (media coverage, complaints, loss of customers)\n3. Duration and service downtime\n4. Geographical spread (number of EU Member States impacted)\n5. Data losses across CIA+A (Confidentiality, Integrity, Availability, Authenticity)\n6. Criticality of services affected (DORA Art. 8 - critical or important function)\n7. Economic impact (absolute > 100,000 EUR or relative > 0.1% of annual turnover)\n\nCLASSIFICATION RULES:\n- MAJOR if: criterion 6 met AND at least one other criterion threshold met, OR two or more criteria at high thresholds simultaneously\n- SIGNIFICANT (cyber threat) if: high likelihood of becoming major but not yet materialized\n- NON_MAJOR otherwise\n\nOUTPUT REQUIREMENTS:\n- Output ONLY a valid JSON object. No markdown code fences. No prose outside the JSON.\n- All datetime values in ISO 8601 UTC format.\n- Justification in French (target audience: French compliance team).\n- Deadlines: from detected_at, add 4h for initial_notification, 72h for intermediate, 30 days for final.\n\nJSON schema:\n{\n  \"classification\": \"major\" | \"significant\" | \"non_major\",\n  \"criteria_assessment\": {\n    \"clients_affected\": { \"value\": <number>, \"threshold_met\": <boolean> },\n    \"reputational_impact\": { \"level\": \"high|medium|low\", \"rationale\": \"<short>\" },\n    \"duration_minutes\": { \"value\": <number>, \"threshold_met\": <boolean> },\n    \"geographical_spread\": { \"member_states\": <number>, \"threshold_met\": <boolean> },\n    \"data_losses\": { \"ciaa_impacted\": [<list>], \"material\": <boolean> },\n    \"service_criticality\": { \"is_critical_function\": <boolean> },\n    \"economic_impact_eur\": { \"value\": <number>, \"threshold_met\": <boolean> }\n  },\n  \"justification\": \"<2-3 sentences in French>\",\n  \"deadlines_utc\": {\n    \"initial_notification_due\": \"<ISO datetime>\",\n    \"intermediate_report_due\": \"<ISO datetime>\",\n    \"final_report_due\": \"<ISO datetime>\"\n  }\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "401c9557-d53c-4ae0-91b8-bc55a3c1dd21",
+      "name": "DORA/NIS AGENT CLASSIFICATION INCIDENT"
+    },
+    {
+      "parameters": {
+        "resource": "spreadsheet",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1872,
+        -112
+      ],
+      "id": "4cfbf835-09c2-45ae-8f70-3f4dfa6c0c46",
+      "name": "Create spreadsheet"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Mock Incident SIEM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mock Incident SIEM": {
+      "main": [
+        [
+          {
+            "node": "Enrichissement contexte Incident",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichissement contexte Incident": {
+      "main": [
+        [
+          {
+            "node": "DORA/NIS AGENT CLASSIFICATION INCIDENT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "DORA/NIS AGENT CLASSIFICATION INCIDENT",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "DORA/NIS AGENT CLASSIFICATION INCIDENT",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Routage Classification": {
+      "main": [
+        [
+          {
+            "node": "Redaction Notification Initiale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Redaction Notification Initiale",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redaction Notification Initiale": {
+      "main": [
+        [
+          {
+            "node": "Email Cellule Conformite",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Registre Incidents",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Cellule Conformite": {
+      "main": [
+        []
+      ]
+    },
+    "DORA/NIS AGENT CLASSIFICATION INCIDENT": {
+      "main": [
+        [
+          {
+            "node": "Routage Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registre Incidents": {
+      "main": [
+        [
+          {
+            "node": "Create spreadsheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "acdf632f-5e0c-4fea-ba58-9fd6e1f9fb67",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "dora-incident-response-agent",
+  "tags": []
+}
