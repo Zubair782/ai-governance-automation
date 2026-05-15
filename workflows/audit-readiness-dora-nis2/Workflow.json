@@ -1,0 +1,220 @@
+
+  "name": "Indexation Audit DORA NIS2",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "8f522c9c-f8d2-4f7f-b883-8804dea5c907",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// DORA articles paraphrases pour POC audit readiness\n// Source : Reglement (UE) 2022/2554\n\nconst doraArticles = [\n  {\n    article_number: \"5\",\n    article_title: \"Cadre de gestion des risques TIC\",\n    pillar: \"ICT risk management\",\n    text: `=== DORA ARTICLE 5 - CADRE DE GESTION DES RISQUES TIC ===\n\nLes entites financieres doivent disposer d'un cadre de gestion des risques TIC interne solide, complet et bien documente. Ce cadre doit permettre de gerer les risques TIC de maniere appropriee, avec un haut niveau de resilience operationnelle numerique.\n\nLe cadre doit inclure au minimum : une strategie de resilience operationnelle numerique, une politique de gestion des risques TIC, et des procedures pour identifier classer et documenter les fonctions metier supportees par les TIC.\n\nL'organe de direction de l'entite financiere est ultimement responsable de la gestion des risques TIC. Il doit definir, approuver, superviser et etre responsable de la mise en oeuvre de toutes les dispositions du cadre. Cette responsabilite ne peut pas etre deleguee.\n\nL'organe de direction doit suivre une formation specifique pour acquerir et maintenir des connaissances suffisantes pour comprendre et evaluer les risques TIC. La frequence de cette formation doit etre formalisee.`\n  },\n  {\n    article_number: \"8\",\n    article_title: \"Identification des fonctions critiques ou importantes\",\n    pillar: \"ICT risk management\",\n    text: `=== DORA ARTICLE 8 - IDENTIFICATION DES FONCTIONS CRITIQUES ===\n\nLes entites financieres doivent identifier, classifier et documenter de maniere appropriee :\n- Toutes les fonctions metier supportees par les TIC\n- Tous les actifs TIC supportant ces fonctions\n- Les sources de risques TIC, en particulier l'exposition aux dependances vis-a-vis d'autres entites\n- Les processus dependant de prestataires tiers TIC\n\nLes fonctions critiques ou importantes sont celles dont l'interruption ou la defaillance materielle aurait un impact sur la viabilite de l'entite, sa capacite a respecter les conditions de son agrement, son rendement financier, ou la continuite de ses services.\n\nL'identification doit etre revisee au moins une fois par an et apres toute modification majeure de l'infrastructure TIC ou des processus metier.\n\nCette cartographie sert de base a l'application differenciee des exigences DORA : les fonctions critiques sont soumises a des controles plus stricts (RTO plus courts, tests plus frequents, exigences fournisseurs renforcees).`\n  },\n  {\n    article_number: \"9\",\n    article_title: \"Protection et prevention\",\n    pillar: \"ICT risk management\",\n    text: `=== DORA ARTICLE 9 - PROTECTION ET PREVENTION ===\n\nLes entites financieres doivent surveiller et controler en continu la securite et le fonctionnement de leurs systemes TIC. Elles doivent minimiser l'impact des risques TIC sur leurs systemes en deployant des outils, politiques et procedures appropries.\n\nLes mesures de protection doivent inclure :\n- Une politique d'authentification forte et de gestion des identites et des acces (IAM), avec principe de moindre privilege\n- Une politique de gestion des changements (change management) avec environnements de test separes\n- Une politique de chiffrement des donnees au repos et en transit, selon la sensibilite\n- Des mecanismes de protection contre les menaces TIC : antivirus, EDR, segmentation reseau, durcissement des configurations\n- Une politique de securite des informations, des actifs physiques et de l'infrastructure\n- Des mecanismes de gestion des vulnerabilites avec processus de patch management documente\n\nL'entite doit verifier en continu la conformite des mesures aux objectifs definis dans le cadre de gestion des risques TIC.`\n  },\n  {\n    article_number: \"10\",\n    article_title: \"Detection des incidents et anomalies\",\n    pillar: \"ICT risk management\",\n    text: `=== DORA ARTICLE 10 - DETECTION ===\n\nLes entites financieres doivent disposer de mecanismes pour detecter rapidement les activites anormales, y compris les problemes de performance des reseaux TIC et les incidents lies aux TIC, et pour identifier les points de defaillance potentiels uniques.\n\nLes mecanismes de detection doivent permettre :\n- L'identification d'incidents en temps reel ou quasi-reel via SIEM, NDR, EDR\n- La distinction entre incidents mineurs et incidents potentiellement majeurs des la detection\n- La generation d'alertes vers les equipes operationnelles SOC avec process de triage\n- La conservation des journaux d'audit suffisamment longtemps pour analyse forensique (typiquement 12 a 24 mois)\n\nLes mecanismes de detection doivent etre testes regulierement, y compris via des exercices de detection (red team / purple team).\n\nLes indicateurs de detection (mean time to detect MTTD, taux de faux positifs, couverture des sources de logs) doivent etre suivis et reportes au comite des risques TIC.`\n  },\n  {\n    article_number: \"11\",\n    article_title: \"Reponse et retablissement\",\n    pillar: \"ICT risk management\",\n    text: `=== DORA ARTICLE 11 - REPONSE ET RETABLISSEMENT ===\n\nLes entites financieres doivent mettre en place une politique exhaustive de continuite des activites TIC qui contient des procedures specifiques. Ces procedures doivent permettre la reponse appropriee a tous les incidents TIC et le retablissement rapide des operations.\n\nLa politique doit inclure :\n- Un plan de continuite des activites TIC (BCP) avec scenarios documentes\n- Un plan de retablissement (DRP) avec RTO et RPO definis pour chaque fonction critique\n- Des procedures de sauvegarde et restauration testees regulierement\n- Une strategie de communication interne et externe en cas de crise\n- Des exercices reguliers de simulation incluant l'organe de direction\n\nLes RTO et RPO pour les fonctions critiques doivent etre alignes sur l'analyse d'impact metier (BIA) et revus annuellement.\n\nLes exercices de continuite doivent etre realises au minimum annuellement, avec scenarios couvrant : perte d'un site primaire, indisponibilite d'un fournisseur cle, cyber-attaque majeure.`\n  },\n  {\n    article_number: \"17\",\n    article_title: \"Processus de gestion des incidents TIC\",\n    pillar: \"Incident reporting\",\n    text: `=== DORA ARTICLE 17 - PROCESSUS DE GESTION DES INCIDENTS ===\n\nLes entites financieres doivent definir, etablir et mettre en oeuvre un processus de gestion des incidents TIC pour detecter, gerer et notifier les incidents lies aux TIC. Elles doivent enregistrer tous les incidents TIC et les cyber-menaces significatives.\n\nLe processus de gestion doit inclure :\n- Des indicateurs d'alerte precoce\n- Des procedures pour identifier, suivre, journaliser, classifier les incidents TIC selon leur priorite, severite et criticite des fonctions touchees\n- L'attribution de roles et responsabilites pour chaque type d'incident\n- Des plans de communication interne au personnel, externe aux clients, aux contreparties et au public\n- Des procedures de remontee a la direction et a l'organe de direction\n- Des procedures de reponse pour limiter les impacts et garantir la reprise rapide des operations\n\nTous les incidents TIC doivent etre enregistres dans un registre interne unique, avec horodatage, classification, actions menees, et personnes responsables identifiees. Ce registre est l'un des premiers documents demandes en audit.`\n  },\n  {\n    article_number: \"24\",\n    article_title: \"Programme de tests de resilience operationnelle numerique\",\n    pillar: \"Resilience testing\",\n    text: `=== DORA ARTICLE 24 - PROGRAMME DE TESTS DE RESILIENCE ===\n\nLes entites financieres doivent etablir, maintenir et reviser un programme de tests de resilience operationnelle numerique solide et complet, faisant partie integrante du cadre de gestion des risques TIC.\n\nLe programme doit inclure une gamme appropriee d'evaluations, de tests, de methodologies, de pratiques et d'outils, incluant :\n- Tests de vulnerabilite (vulnerability scanning)\n- Analyses de source ouverte (OSINT)\n- Evaluations de la securite du reseau\n- Analyses des lacunes (gap analysis)\n- Revues de la securite physique\n- Questionnaires et solutions de balayage\n- Revues du code source\n- Tests bases sur des scenarios\n- Tests de compatibilite, performance, end-to-end et tests d'intrusion\n\nTous les systemes TIC supportant des fonctions critiques ou importantes doivent etre testes au moins annuellement.\n\nLe programme doit etre approuve par l'organe de direction et regulierement revise. Les resultats des tests, les vulnerabilites identifiees et les actions correctives doivent etre formellement documentes et suivis.`\n  },\n  {\n    article_number: \"28\",\n    article_title: \"Principes generaux de gestion des risques tiers TIC\",\n    pillar: \"Third-party risk management\",\n    text: `=== DORA ARTICLE 28 - GESTION DES RISQUES TIERS TIC ===\n\nLes entites financieres doivent gerer le risque associe a leurs prestataires tiers TIC dans le cadre de la gestion globale des risques TIC, en respectant les principes suivants.\n\nAvant de conclure un accord contractuel : evaluation des risques (due diligence), identification et evaluation de toutes les dependances pertinentes, analyse des conflits d'interet potentiels.\n\nPendant la relation : monitoring continu de la performance, des risques de concentration, des changements affectant le prestataire.\n\nConditions contractuelles obligatoires : description claire du service, niveaux de service (SLA), exigences en matiere de securite, droit d'audit de l'entite ou d'un tiers mandate, dispositions de cooperation avec les autorites competentes, droits de resiliation, strategie de sortie.\n\nLes entites financieres doivent maintenir un registre d'information (Register of Information) de tous les accords contractuels avec des tiers TIC, distinguant ceux supportant des fonctions critiques ou importantes. Ce registre est soumis annuellement aux autorites competentes (EBA pour les banques).\n\nPour les prestataires supportant des fonctions critiques : exigences contractuelles renforcees + tests d'audit + plans de sortie documentes et testes.`\n  }\n];\n\n// Convertir chaque article en item n8n separe avec metadata complete\nreturn doraArticles.map(art => ({\n  json: {\n    text: art.text,\n    framework: \"DORA\",\n    article_number: art.article_number,\n    article_title: art.article_title,\n    pillar: art.pillar,\n    source: \"Reglement (UE) 2022/2554\",\n    document_id: `dora-art-${art.article_number}`\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "7e0ec23a-dfe9-4101-829b-10c0be2dcae4",
+      "name": "TEXTE DORA"
+    },
+    {
+      "parameters": {
+        "jsCode": "// NIS 2 articles paraphrases pour POC audit readiness\n// Source : Directive (UE) 2022/2555\n\n// Recuperer les 8 items DORA en entree\nconst previousItems = $input.all();\n\nconst nis2Articles = [\n  {\n    article_number: \"3\",\n    article_title: \"Entites essentielles et entites importantes\",\n    pillar: \"Scope and classification\",\n    text: `=== NIS 2 ARTICLE 3 - ENTITES ESSENTIELLES ET IMPORTANTES ===\n\nLes entites essentielles sont les grandes entites operant dans les secteurs hautement critiques de l'Annexe I : energie, transport, banque, infrastructure des marches financiers, sante, eau potable, eaux usees, infrastructure numerique, gestion des services TIC B2B, administration publique, espace.\n\nLes entites importantes sont les entites de taille moyenne dans les memes secteurs, ou operant dans les autres secteurs critiques de l'Annexe II : services postaux, gestion des dechets, fabrication chimique, alimentation, fabrication d'equipements medicaux ou industriels, fournisseurs de services numeriques (places de marche, moteurs de recherche, reseaux sociaux), recherche.\n\nCriteres de taille (medium-sized minimum) : entreprises de 50 a 250 employes, ou CA annuel entre 10 et 50 millions EUR, ou bilan entre 10 et 43 millions EUR. Les grandes entreprises au-dessus de ces seuils sont essentielles.\n\nLa distinction entre essentielle et importante determine le regime de supervision (proactif vs ex-post) et le niveau maximum des sanctions administratives.`\n  },\n  {\n    article_number: \"20\",\n    article_title: \"Gouvernance\",\n    pillar: \"Governance\",\n    text: `=== NIS 2 ARTICLE 20 - GOUVERNANCE ===\n\nL'organe de direction des entites essentielles et importantes doit approuver les mesures de gestion des risques cybersecurite prevues a l'article 21 et superviser leur mise en oeuvre.\n\nLes membres de l'organe de direction peuvent etre tenus pour personnellement responsables des manquements de l'entite aux obligations NIS 2. Cette responsabilite personnelle est inedite en droit cyber europeen et change profondement l'attention portee a la cybersecurite au plus haut niveau.\n\nLes membres de l'organe de direction doivent suivre une formation reguliere pour acquerir des connaissances et competences suffisantes pour identifier les risques cyber, evaluer les pratiques de gestion des risques, et comprendre leur impact sur les services fournis.\n\nUne formation similaire doit etre proposee regulierement a tous les employes. La formation doit etre formellement documentee et son efficacite mesuree.`\n  },\n  {\n    article_number: \"21\",\n    article_title: \"Mesures de gestion des risques cybersecurite\",\n    pillar: \"Risk management measures\",\n    text: `=== NIS 2 ARTICLE 21 - MESURES DE GESTION DES RISQUES CYBERSECURITE ===\n\nLes entites essentielles et importantes doivent prendre des mesures techniques, operationnelles et organisationnelles appropriees et proportionnees pour gerer les risques cyber et minimiser l'impact des incidents sur les beneficiaires de leurs services.\n\nLes mesures doivent inclure au minimum dix domaines obligatoires :\na) Politiques d'analyse des risques et de securite des systemes d'information\nb) Gestion des incidents (detection, classification, reponse)\nc) Continuite d'activite : sauvegardes, plans de reprise (DRP), gestion des crises\nd) Securite de la chaine d'approvisionnement, incluant les fournisseurs directs et services geres\ne) Securite dans l'acquisition, le developpement et la maintenance des systemes\nf) Politiques et procedures pour evaluer l'efficacite des mesures de gestion des risques\ng) Pratiques d'hygiene cyber de base et formation a la cybersecurite\nh) Politiques sur l'utilisation de la cryptographie et du chiffrement\ni) Securite des ressources humaines, politiques d'acces, gestion des actifs\nj) Solutions d'authentification multi-facteurs ou continue, communications voix/video/texte securisees, communications d'urgence\n\nLes mesures doivent etre proportionnees au risque encouru, a l'etat de l'art, au cout de mise en oeuvre, et a l'impact des incidents.\n\nL'article 21 est le coeur des controles cybersecurite NIS 2 - tout audit s'y refere.`\n  },\n  {\n    article_number: \"23\",\n    article_title: \"Obligations de notification d'incident\",\n    pillar: \"Incident reporting\",\n    text: `=== NIS 2 ARTICLE 23 - OBLIGATIONS DE NOTIFICATION ===\n\nLes entites essentielles et importantes doivent notifier sans retard injustifie leur autorite competente nationale (ANSSI en France) de tout incident ayant un impact significatif sur la fourniture de leurs services.\n\nTrois paliers de notification :\n- Early warning sous 24h apres prise de connaissance, indiquant si l'incident est suspecte d'etre malveillant ou peut avoir un impact transfrontalier\n- Notification d'incident sous 72h, avec evaluation initiale, indicateurs de compromission, mesures de remediation prises\n- Rapport final sous 1 mois apres l'early warning, contenant description detaillee, cause profonde, mesures correctives appliquees et en cours, impact transfrontalier\n\nUn incident est considere significatif s'il a cause ou peut causer une perturbation operationnelle grave ou des pertes financieres pour l'entite, ou s'il a affecte ou peut affecter d'autres personnes physiques ou morales en causant des dommages materiels ou immateriels considerables.\n\nSi necessaire, les beneficiaires des services doivent egalement etre informes des incidents susceptibles d'affecter negativement la fourniture de service.`\n  },\n  {\n    article_number: \"24\",\n    article_title: \"Schemas europeens de certification de cybersecurite\",\n    pillar: \"Standardisation\",\n    text: `=== NIS 2 ARTICLE 24 - SCHEMAS DE CERTIFICATION ===\n\nLes Etats membres peuvent exiger que les entites essentielles et importantes utilisent des produits TIC, services TIC ou processus TIC particuliers, certifies selon les schemas europeens de certification de la cybersecurite adoptes en application du Cybersecurity Act (Reglement UE 2019/881).\n\nLes schemas pertinents incluent :\n- EUCC pour les produits TIC\n- EUCS pour les services d'informatique en nuage\n- EU5G pour les reseaux 5G\n- D'autres schemas en cours de developpement par l'ENISA\n\nCette exigence ne peut etre imposee que dans la mesure necessaire pour assurer un niveau eleve de cybersecurite. La Commission peut preciser ces exigences par actes d'execution.\n\nPour les entites soumises a NIS 2, l'utilisation de produits certifies devient un argument de conformite naturel - en particulier pour les composants critiques (HSM, gateways, solutions d'authentification).`\n  },\n  {\n    article_number: \"25\",\n    article_title: \"Standardisation\",\n    pillar: \"Standardisation\",\n    text: `=== NIS 2 ARTICLE 25 - STANDARDISATION ===\n\nPour favoriser la mise en oeuvre convergente de l'article 21, les Etats membres et la Commission, sans imposer ni discriminer une technologie particuliere, encouragent l'utilisation des standards europeens et internationaux pertinents pour la securite des reseaux et des systemes d'information.\n\nLes standards de reference incluent :\n- ISO/IEC 27001 : systeme de management de la securite de l'information (le plus cite)\n- ISO/IEC 27002 : controles de securite de l'information\n- ISO/IEC 22301 : systeme de management de la continuite d'activite\n- ISO/IEC 27005 : gestion des risques cyber\n- Guidelines ENISA sur la mise en oeuvre de NIS 2\n- Normes ETSI sur les telecoms\n\nBien que ces standards ne soient pas legalement contraignants, ils constituent en pratique le referentiel de conformite attendu par les autorites lors d'audits ou inspections. Une certification ISO 27001 facilite considerablement la demonstration de conformite a l'article 21.`\n  },\n  {\n    article_number: \"27\",\n    article_title: \"Enregistrement des entites\",\n    pillar: \"Registration\",\n    text: `=== NIS 2 ARTICLE 27 - ENREGISTREMENT ===\n\nLes entites essentielles et importantes doivent s'enregistrer aupres de leur autorite competente nationale dans un delai defini par chaque Etat membre apres l'entree en application de NIS 2.\n\nEn France, l'enregistrement se fait via le portail MonEspaceNIS2 de l'ANSSI.\n\nInformations a fournir :\n- Nom de l'entite, denomination commerciale, forme juridique\n- Adresse et coordonnees a jour, point de contact securite\n- Secteur et sous-secteur d'activite (Annexe I ou Annexe II)\n- Etats membres ou l'entite fournit ses services\n- Plages d'adresses IP publiques\n- Identifiants utilises (numero d'enregistrement national, identifiant fiscal, numero LEI le cas echeant)\n\nLes entites doivent maintenir ces informations a jour et notifier sans retard injustifie tout changement.\n\nL'absence d'enregistrement constitue elle-meme un manquement aux obligations NIS 2 et peut declencher des sanctions, independamment de la qualite des mesures cyber par ailleurs.`\n  },\n  {\n    article_number: \"32\",\n    article_title: \"Mesures de supervision et sanctions\",\n    pillar: \"Supervision and enforcement\",\n    text: `=== NIS 2 ARTICLE 32 - MESURES DE SUPERVISION ET SANCTIONS ===\n\nLes autorites competentes disposent de pouvoirs etendus pour superviser les entites NIS 2.\n\nPouvoirs sur les entites essentielles (supervision proactive) :\n- Inspections sur site, regulieres ou ciblees\n- Audits de securite reguliers ou ad hoc\n- Scans de securite ciblee\n- Demandes d'information sur les mesures de gestion des risques\n- Demandes d'acces aux donnees, documents et informations necessaires\n- Examen des politiques et procedures de cybersecurite\n\nPouvoirs sur les entites importantes (supervision ex-post) : essentiellement apres constatation de manquements, incidents, ou plaintes.\n\nSanctions administratives :\n- Pour les entites essentielles : jusqu'a 10 millions EUR ou 2% du CA mondial annuel total (le montant le plus eleve)\n- Pour les entites importantes : jusqu'a 7 millions EUR ou 1,4% du CA mondial annuel total\n\nSanctions non-pecuniaires possibles : avertissements, injonctions de mise en conformite, suspension temporaire de certifications, et au cas extreme, interdiction temporaire d'exercer des fonctions de direction pour les responsables.`\n  }\n];\n\n// Convertir chaque article NIS 2 en item n8n avec metadata\nconst nis2Items = nis2Articles.map(art => ({\n  json: {\n    text: art.text,\n    framework: \"NIS2\",\n    article_number: art.article_number,\n    article_title: art.article_title,\n    pillar: art.pillar,\n    source: \"Directive (UE) 2022/2555\",\n    document_id: `nis2-art-${art.article_number}`\n  }\n}));\n\n// Retourner DORA + NIS 2 (16 items total)\nreturn [...previousItems, ...nis2Items];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "5d45d829-c028-4339-bc72-68505335c469",
+      "name": "Texte NIS 2"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "memoryKey": {
+          "__rl": true,
+          "value": "eu-regulations",
+          "mode": "id"
+        },
+        "clearStore": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        624,
+        0
+      ],
+      "id": "60c9e3ce-46d2-4c1a-9f54-22adad673105",
+      "name": "Vector Store - Insert EU Regulations"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "framework",
+                "value": "={{ $json.framework }}"
+              },
+              {
+                "name": "article_number",
+                "value": "={{ $json.article_number }}"
+              },
+              {
+                "name": "article_title",
+                "value": "={{ $json.article_title }}"
+              },
+              {
+                "name": "pillar",
+                "value": "={{ $json.pillar }}"
+              },
+              {
+                "name": "source",
+                "value": "={{ $json.source }}"
+              },
+              {
+                "name": "document_id",
+                "value": "={{ $json.document_id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        784,
+        176
+      ],
+      "id": "431e2469-dbee-4159-b39f-c31849f1bc61",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        848,
+        352
+      ],
+      "id": "76719019-c9f0-4b86-ae74-4512d3eee044",
+      "name": "Recursive Character Text Splitter"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        624,
+        192
+      ],
+      "id": "1ac59395-887e-4ba0-bac5-b3b290cdad5b",
+      "name": "Embeddings OpenAI",
+      "credentials": {
+        "openAiApi": {
+          "id": "f4ATutHjrwoMx2Dw",
+          "name": "OpenAI account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "TEXTE DORA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TEXTE DORA": {
+      "main": [
+        [
+          {
+            "node": "Texte NIS 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Texte NIS 2": {
+      "main": [
+        [
+          {
+            "node": "Vector Store - Insert EU Regulations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Vector Store - Insert EU Regulations",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recursive Character Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Vector Store - Insert EU Regulations",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0228dce4-8e3b-4e29-b45f-135cc43cb6be",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3f69a021ed478190cda4e5e1424ab1e984f9dad9b0d614151f286ac0ecc64457"
+  },
+  "id": "O7Fw2TU18KfydJPH",
+  "tags": []
+}
