@@ -1,0 +1,506 @@
+{
+  "name": "Agent Audit KIT DORA NIS2",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Generateur de Kit d'Audit DORA / NIS 2",
+        "formDescription": "Renseignez les parametres de l'audit a generer. L'agent IA produira un kit complet : plan de test, preuves a collecter, trame d'interview, findings type et mapping ITIL/COBIT.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Nom de l'entite auditee",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Framework reglementaire",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "DORA"
+                  },
+                  {
+                    "option": "NIS2"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Numero d'article a auditer",
+              "placeholder": "9",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Secteur d'activite",
+              "placeholder": "Ex : Banque, Energie, Sante",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Perimetre teste",
+              "fieldType": "textarea",
+              "placeholder": "Decrivez le perimetre : applications, sites, processus, dates...",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Type d'entite",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Entite essentielle (grande entreprise secteur critique)"
+                  },
+                  {
+                    "option": "Entite importante (moyenne entreprise)"
+                  },
+                  {
+                    "option": "Entite financiere DORA"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "769012fb-9019-4955-8e3f-d279d46c19a5",
+      "name": "On form submission",
+      "webhookId": "REPLACE_WITH_YOUR_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "memoryKey": {
+          "__rl": true,
+          "value": "eu-regulations",
+          "mode": "id"
+        },
+        "prompt": "=Audit {{ $json[\"Framework reglementaire\"] }} Article {{ $json[\"Numero d'article a auditer\"] }} - secteur {{ $json[\"Secteur d'activite\"] }} - perimetre teste : {{ $json[\"Perimetre teste\"] }}",
+        "topK": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreInMemory",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "87036d08-065e-4c8e-921f-b42b8d050e61",
+      "name": "Vector store - Get EU Regulations"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        224
+      ],
+      "id": "97369c32-026f-4b6d-b9a2-061158cf3916",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperer les chunks retournes par le Vector Store (top 15)\nconst retrievedChunks = $input.all();\n\n// Recuperer les donnees du formulaire via reference cross-node\nconst formData = $('On form submission').item.json;\n\n// Extraire le framework choisi par l'utilisateur\nconst targetFramework = formData[\"Framework reglementaire\"];\n\n// FILTRAGE METADATA : ne garder que les chunks du framework cible\n// NOTE : structure reelle = item.json.document.metadata.framework\nconst filteredChunks = retrievedChunks.filter(item => \n  item.json.document && \n  item.json.document.metadata && \n  item.json.document.metadata.framework === targetFramework\n);\n\n// Garder les 8 plus pertinents apres filtrage\nconst top8Chunks = filteredChunks.slice(0, 8);\n\n// Concatener les chunks en un contexte lisible pour l'agent\nconst retrievedContext = top8Chunks\n  .map((item, idx) => {\n    const meta = item.json.document.metadata;\n    const content = item.json.document.pageContent;\n    return `[CHUNK ${idx + 1} - ${meta.framework} Article ${meta.article_number} - ${meta.article_title}]\\n\\n${content}`;\n  })\n  .join('\\n\\n---\\n\\n');\n\n// Diagnostic pour debugging\nconst diagnostics = {\n  total_retrieved: retrievedChunks.length,\n  total_after_framework_filter: filteredChunks.length,\n  framework_targeted: targetFramework,\n  chunks_used_for_context: top8Chunks.length,\n  chunks_articles: top8Chunks.map(item => \n    `${item.json.document.metadata.framework} Art. ${item.json.document.metadata.article_number}`\n  ),\n  chunks_scores: top8Chunks.map(item => \n    item.json.score ? item.json.score.toFixed(4) : 'N/A'\n  )\n};\n\n// Retourner contexte + donnees formulaire pour l'agent\nreturn [{\n  json: {\n    // Donnees formulaire (passees telles quelles a l'agent)\n    entity_name: formData[\"Nom de l'entite auditee\"],\n    framework: formData[\"Framework reglementaire\"],\n    article_number: formData[\"Numero d'article a auditer\"],\n    sector: formData[\"Secteur d'activite\"],\n    perimeter: formData[\"Perimetre teste\"],\n    entity_type: formData[\"Type d'entite\"],\n    \n    // Contexte RAG filtre\n    retrieved_context: retrievedContext,\n    \n    // Diagnostic\n    diagnostics: diagnostics\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        -16
+      ],
+      "id": "c5c0d5cf-6c5f-4cf3-bd9c-a9b38e8ba3ce",
+      "name": "Preparer contexte audit"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "==# DONNEES DE L'AUDIT A GENERER\n\n**Entite auditee** : {{ $json.entity_name }}\n**Framework reglementaire** : {{ $json.framework }}\n**Article cible** : Article {{ $json.article_number }}\n**Secteur d'activite** : {{ $json.sector }}\n**Perimetre teste** : {{ $json.perimeter }}\n**Type d'entite** : {{ $json.entity_type }}\n\n---\n\n# CONTEXTE REGLEMENTAIRE (RAG - 8 chunks filtres par framework)\n\n{{ $json.retrieved_context }}\n\n---\n\n# DIAGNOSTIC RAG\n\n- Articles couverts dans le contexte : {{ $json.diagnostics.chunks_articles.join(', ') }}\n- Total chunks utilises : {{ $json.diagnostics.chunks_used_for_context }}\n\n---\n\n# MISSION\n\nGenere un kit d'audit complet pour l'auditeur, en respectant scrupuleusement le format JSON defini dans ton prompt systeme. Fonde-toi EXCLUSIVEMENT sur le contexte reglementaire fourni ci-dessus. Si une exigence n'est pas couverte par les chunks fournis, indique-le par [A COMPLETER : ...].",
+        "options": {
+          "systemMessage": "==# ROLE\n\nTu es un auditeur senior specialise en conformite reglementaire UE (DORA, NIS 2) et en gouvernance SI (ITIL 4, COBIT 2019). Tu generes des kits d'audit operationnels pour des equipes d'audit interne ou de controle permanent.\n\n# CONTEXTE\n\nTu recois en entree :\n- Les parametres de l'audit (entite, framework, article, secteur, perimetre, type d'entite)\n- Un contexte RAG : chunks reglementaires filtres par framework, avec metadata (article_number, article_title, pillar, source, document_id)\n\n# MISSION\n\nProduire un kit d'audit structure en 5 sections, exclusivement fonde sur les chunks fournis. Ne jamais inventer d'exigence non presente dans le contexte. Si une information manque, l'indiquer explicitement par [A COMPLETER : ...].\n\n# FORMAT DE SORTIE (JSON strict, valide, sans markdown autour)\n\n{\n  \"metadata\": {\n    \"entite\": \"...\",\n    \"framework\": \"...\",\n    \"article\": \"...\",\n    \"perimetre\": \"...\",\n    \"date_generation\": \"AAAA-MM-JJ\"\n  },\n  \"plan_test\": [\n    {\n      \"id\": \"T1\",\n      \"objectif\": \"...\",\n      \"exigence_source\": \"Art. X - extrait court de l'exigence\",\n      \"procedure\": \"...\",\n      \"criteres_reussite\": \"...\"\n    }\n  ],\n  \"preuves_a_collecter\": [\n    {\n      \"id\": \"P1\",\n      \"nature\": \"document | log | capture | entretien | observation\",\n      \"description\": \"...\",\n      \"responsable_fourniture\": \"...\",\n      \"rattachement_test\": \"T1\"\n    }\n  ],\n  \"trame_interview\": {\n    \"interlocuteurs_cibles\": [\"RSSI\", \"...\"],\n    \"questions\": [\n      {\n        \"id\": \"Q1\",\n        \"theme\": \"...\",\n        \"question\": \"...\",\n        \"exigence_couverte\": \"Art. X\"\n      }\n    ]\n  },\n  \"findings_template\": [\n    {\n      \"id\": \"F1\",\n      \"exigence\": \"...\",\n      \"risque_si_non_conforme\": \"...\",\n      \"niveau_criticite\": \"critique | majeur | mineur\",\n      \"recommandation_type\": \"...\"\n    }\n  ],\n  \"mapping_itil_cobit\": [\n    {\n      \"exigence_reglementaire\": \"Art. X - ...\",\n      \"itil_practice\": \"ex: Information Security Management\",\n      \"cobit_objective\": \"ex: APO13 Managed Security\",\n      \"justification_mapping\": \"...\"\n    }\n  ]\n}\n\n# REGLES METIER\n\n1. Chaque test du plan_test DOIT etre rattache a une exigence du contexte RAG (citer article_number + extrait court).\n2. Chaque preuve DOIT etre rattachee a un test via le champ \"rattachement_test\".\n3. Les questions d'interview DOIVENT etre ouvertes, non orientees, et permettre d'evaluer la maturite du dispositif.\n4. Le mapping ITIL/COBIT DOIT etre justifie : pas de mapping automatique sans lien logique avec l'exigence.\n5. Calibrage du volume :\n   - 5 a 8 tests dans plan_test\n   - 8 a 12 preuves dans preuves_a_collecter\n   - 6 a 10 questions dans trame_interview.questions\n   - 4 a 7 findings dans findings_template\n   - 3 a 6 mappings dans mapping_itil_cobit\n\n# REFERENTIELS DE MAPPING\n\nITIL 4 - practices frequemment mobilisees pour DORA / NIS 2 :\n- Information Security Management\n- Service Continuity Management\n- Incident Management\n- Change Enablement\n- Supplier Management\n- Risk Management\n- Monitoring and Event Management\n\nCOBIT 2019 - objectifs frequemment mobilises :\n- EDM03 Ensured Risk Optimization\n- APO12 Managed Risk\n- APO13 Managed Security\n- APO14 Managed Data\n- BAI06 Managed IT Changes\n- DSS02 Managed Service Requests and Incidents\n- DSS04 Managed Continuity\n- DSS05 Managed Security Services\n- MEA03 Managed Compliance with External Requirements\n\n# CONTRAINTES DE SORTIE\n\n- Langue : francais\n- Ton : factuel, operationnel, sans verbiage\n- JSON valide UNIQUEMENT, pas de markdown autour, pas de commentaire hors JSON\n- Pas de backticks triples autour du JSON\n- Date du jour au format AAAA-MM-JJ dans metadata.date_generation"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "b2a1b8b1-6ee2-4a03-9aa5-daadb23afa93",
+      "name": "Agent Audit Kit Generator"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-opus-4-7",
+          "mode": "list",
+          "cachedResultName": "Claude Opus 4.7"
+        },
+        "options": {
+          "maxTokensToSample": 16000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        752,
+        192
+      ],
+      "id": "3a47bce1-ceb7-48b7-b648-af92fe8ad2a1",
+      "name": "Anthropic Chat Model"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperer l'output de l'agent IA\nconst agentOutput = $input.first().json.output;\n\n// Recuperer les donnees du formulaire pour les metadonnees de ligne\nconst formData = $('On form submission').item.json;\nconst contextData = $('Preparer contexte audit').item.json;\n\n// Nettoyer l'output : enlever les eventuels backticks markdown autour du JSON\nlet cleanedOutput = agentOutput.trim();\nif (cleanedOutput.startsWith('```json')) {\n  cleanedOutput = cleanedOutput.replace(/^```json\\s*/, '').replace(/\\s*```$/, '');\n} else if (cleanedOutput.startsWith('```')) {\n  cleanedOutput = cleanedOutput.replace(/^```\\s*/, '').replace(/\\s*```$/, '');\n}\n\n// Parser le JSON\nlet auditKit;\ntry {\n  auditKit = JSON.parse(cleanedOutput);\n} catch (e) {\n  return [{\n    json: {\n      error: \"Echec parsing JSON\",\n      details: e.message,\n      raw_output: agentOutput.substring(0, 500)\n    }\n  }];\n}\n\n// Generer un identifiant unique d'audit\nconst auditId = `AUDIT-${formData[\"Framework reglementaire\"]}-Art${formData[\"Numero d'article a auditer\"]}-${Date.now()}`;\nconst now = new Date().toISOString();\n\n// Construire UNE seule ligne synthetique pour Sheets (vue d'ensemble)\nconst summaryRow = {\n  audit_id: auditId,\n  date_generation: now,\n  entite: auditKit.metadata.entite,\n  framework: auditKit.metadata.framework,\n  article: auditKit.metadata.article,\n  secteur: formData[\"Secteur d'activite\"],\n  perimetre: auditKit.metadata.perimetre,\n  type_entite: formData[\"Type d'entite\"],\n  nb_tests: auditKit.plan_test ? auditKit.plan_test.length : 0,\n  nb_preuves: auditKit.preuves_a_collecter ? auditKit.preuves_a_collecter.length : 0,\n  nb_questions: auditKit.trame_interview && auditKit.trame_interview.questions \n    ? auditKit.trame_interview.questions.length : 0,\n  nb_findings: auditKit.findings_template ? auditKit.findings_template.length : 0,\n  nb_mappings: auditKit.mapping_itil_cobit ? auditKit.mapping_itil_cobit.length : 0,\n  interlocuteurs: auditKit.trame_interview && auditKit.trame_interview.interlocuteurs_cibles\n    ? auditKit.trame_interview.interlocuteurs_cibles.join(' | ') : '',\n  articles_couverts_rag: contextData.diagnostics.chunks_articles.join(' | '),\n  kit_complet_json: JSON.stringify(auditKit, null, 2)\n};\n\n// Retourner UN seul item avec :\n// - La ligne synthese pour Sheets\n// - Le kit complet (pour l'email a venir)\nreturn [{\n  json: {\n    audit_id: auditId,\n    summary_row: summaryRow,\n    audit_kit: auditKit,\n    entity_name: formData[\"Nom de l'entite auditee\"],\n    framework: formData[\"Framework reglementaire\"],\n    article_number: formData[\"Numero d'article a auditer\"]\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        0
+      ],
+      "id": "3132bd72-a55f-4836-bd97-dbe521392cf6",
+      "name": "Parser Kit audit pour sheets"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_GOOGLE_SHEETS_URL",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "REPLACE_WITH_YOUR_SHEET_URL"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "audit_id": "={{ $json.summary_row.audit_id }}",
+            "date_generation": "={{ $json.summary_row.date_generation }}",
+            "entite": "={{ $json.summary_row.entite }}",
+            "framework": "={{ $json.summary_row.framework }}",
+            "article": "={{ $json.summary_row.article }}",
+            "secteur": "={{ $json.summary_row.secteur }}",
+            "perimetre": "={{ $json.summary_row.perimetre }}",
+            "type_entite": "={{ $json.summary_row.type_entite }}",
+            "nb_tests": "={{ $json.summary_row.nb_tests }}",
+            "nb_preuves": "={{ $json.summary_row.nb_preuves }}",
+            "nb_questions": "={{ $json.summary_row.nb_questions }}",
+            "nb_findings": "={{ $json.summary_row.nb_findings }}",
+            "nb_mappings": "={{ $json.summary_row.nb_mappings }}",
+            "interlocuteurs": "={{ $json.summary_row.interlocuteurs }}",
+            "articles_couverts_rag": "={{ $json.summary_row.articles_couverts_rag }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "audit_id",
+              "displayName": "audit_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "date_generation",
+              "displayName": "date_generation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "entite",
+              "displayName": "entite",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "framework",
+              "displayName": "framework",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "article",
+              "displayName": "article",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "secteur",
+              "displayName": "secteur",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "perimetre",
+              "displayName": "perimetre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "type_entite",
+              "displayName": "type_entite",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nb_tests",
+              "displayName": "nb_tests",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nb_preuves",
+              "displayName": "nb_preuves",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nb_questions",
+              "displayName": "nb_questions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nb_findings",
+              "displayName": "nb_findings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nb_mappings",
+              "displayName": "nb_mappings",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "interlocuteurs",
+              "displayName": "interlocuteurs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "articles_couverts_rag",
+              "displayName": "articles_couverts_rag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1504,
+        0
+      ],
+      "id": "ed1291aa-6a18-439e-9626-ad3a5612c9c5",
+      "name": "Sheets - Append audit"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Recuperer les donnees du node Parser\nconst data = $('Parser Kit audit pour sheets').item.json;\nconst kit = data.audit_kit;\nconst auditId = data.audit_id;\n\n// Helpers de formatage\nconst escapeHtml = (str) => String(str || '')\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst criticiteColor = (niveau) => {\n  if (niveau === 'critique') return '#d32f2f';\n  if (niveau === 'majeur') return '#f57c00';\n  return '#388e3c';\n};\n\n// Section : Plan de test\nconst planTestHtml = (kit.plan_test || []).map(t => `\n  <tr>\n    <td style=\"padding:8px;border:1px solid #ddd;font-weight:bold;\">${escapeHtml(t.id)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(t.objectif)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;font-style:italic;font-size:0.9em;\">${escapeHtml(t.exigence_source)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(t.procedure)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(t.criteres_reussite)}</td>\n  </tr>\n`).join('');\n\n// Section : Preuves\nconst preuvesHtml = (kit.preuves_a_collecter || []).map(p => `\n  <tr>\n    <td style=\"padding:8px;border:1px solid #ddd;font-weight:bold;\">${escapeHtml(p.id)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\"><span style=\"background:#e3f2fd;padding:2px 6px;border-radius:3px;font-size:0.85em;\">${escapeHtml(p.nature)}</span></td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(p.description)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(p.responsable_fourniture)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;text-align:center;\">${escapeHtml(p.rattachement_test)}</td>\n  </tr>\n`).join('');\n\n// Section : Interview\nconst interlocuteursHtml = (kit.trame_interview?.interlocuteurs_cibles || [])\n  .map(i => `<li>${escapeHtml(i)}</li>`).join('');\nconst questionsHtml = (kit.trame_interview?.questions || []).map(q => `\n  <tr>\n    <td style=\"padding:8px;border:1px solid #ddd;font-weight:bold;\">${escapeHtml(q.id)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\"><strong>${escapeHtml(q.theme)}</strong><br><br>${escapeHtml(q.question)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;font-size:0.9em;\">${escapeHtml(q.exigence_couverte)}</td>\n  </tr>\n`).join('');\n\n// Section : Findings\nconst findingsHtml = (kit.findings_template || []).map(f => `\n  <tr>\n    <td style=\"padding:8px;border:1px solid #ddd;font-weight:bold;\">${escapeHtml(f.id)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(f.exigence)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(f.risque_si_non_conforme)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;text-align:center;\"><span style=\"background:${criticiteColor(f.niveau_criticite)};color:white;padding:3px 10px;border-radius:3px;font-weight:bold;text-transform:uppercase;font-size:0.8em;\">${escapeHtml(f.niveau_criticite)}</span></td>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(f.recommandation_type)}</td>\n  </tr>\n`).join('');\n\n// Section : Mapping ITIL/COBIT\nconst mappingHtml = (kit.mapping_itil_cobit || []).map(m => `\n  <tr>\n    <td style=\"padding:8px;border:1px solid #ddd;\">${escapeHtml(m.exigence_reglementaire)}</td>\n    <td style=\"padding:8px;border:1px solid #ddd;\"><strong>${escapeHtml(m.itil_practice)}</strong></td>\n    <td style=\"padding:8px;border:1px solid #ddd;\"><strong>${escapeHtml(m.cobit_objective)}</strong></td>\n    <td style=\"padding:8px;border:1px solid #ddd;font-size:0.9em;\">${escapeHtml(m.justification_mapping)}</td>\n  </tr>\n`).join('');\n\n// Assemblage HTML complet\nconst html = `\n<!DOCTYPE html>\n<html><body style=\"font-family:Arial,sans-serif;color:#333;max-width:1000px;margin:auto;\">\n\n<div style=\"background:#1a237e;color:white;padding:20px;border-radius:8px;margin-bottom:20px;\">\n  <h1 style=\"margin:0;\">Kit d'Audit ${escapeHtml(kit.metadata.framework)} - ${escapeHtml(kit.metadata.article)}</h1>\n  <p style=\"margin:5px 0 0 0;opacity:0.9;\">${escapeHtml(auditId)}</p>\n</div>\n\n<div style=\"background:#f5f5f5;padding:15px;border-radius:5px;margin-bottom:25px;\">\n  <strong>Entite auditee :</strong> ${escapeHtml(kit.metadata.entite)}<br>\n  <strong>Perimetre :</strong> ${escapeHtml(kit.metadata.perimetre)}<br>\n  <strong>Date de generation :</strong> ${escapeHtml(kit.metadata.date_generation)}\n</div>\n\n<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:5px;\">1. Plan de test (${(kit.plan_test || []).length} tests)</h2>\n<table style=\"width:100%;border-collapse:collapse;margin-bottom:30px;font-size:0.9em;\">\n  <thead><tr style=\"background:#1a237e;color:white;\">\n    <th style=\"padding:10px;border:1px solid #ddd;\">ID</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Objectif</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Exigence source</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Procedure</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Criteres de reussite</th>\n  </tr></thead>\n  <tbody>${planTestHtml}</tbody>\n</table>\n\n<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:5px;\">2. Preuves a collecter (${(kit.preuves_a_collecter || []).length} preuves)</h2>\n<table style=\"width:100%;border-collapse:collapse;margin-bottom:30px;font-size:0.9em;\">\n  <thead><tr style=\"background:#1a237e;color:white;\">\n    <th style=\"padding:10px;border:1px solid #ddd;\">ID</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Nature</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Description</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Responsable</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Rattachement</th>\n  </tr></thead>\n  <tbody>${preuvesHtml}</tbody>\n</table>\n\n<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:5px;\">3. Trame d'interview</h2>\n<p><strong>Interlocuteurs cibles :</strong></p>\n<ul>${interlocuteursHtml}</ul>\n<table style=\"width:100%;border-collapse:collapse;margin-bottom:30px;font-size:0.9em;\">\n  <thead><tr style=\"background:#1a237e;color:white;\">\n    <th style=\"padding:10px;border:1px solid #ddd;\">ID</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Question</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Exigence</th>\n  </tr></thead>\n  <tbody>${questionsHtml}</tbody>\n</table>\n\n<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:5px;\">4. Findings types (${(kit.findings_template || []).length} findings)</h2>\n<table style=\"width:100%;border-collapse:collapse;margin-bottom:30px;font-size:0.9em;\">\n  <thead><tr style=\"background:#1a237e;color:white;\">\n    <th style=\"padding:10px;border:1px solid #ddd;\">ID</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Exigence</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Risque si non-conforme</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Criticite</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Recommandation type</th>\n  </tr></thead>\n  <tbody>${findingsHtml}</tbody>\n</table>\n\n<h2 style=\"color:#1a237e;border-bottom:2px solid #1a237e;padding-bottom:5px;\">5. Mapping ITIL 4 / COBIT 2019 (${(kit.mapping_itil_cobit || []).length} mappings)</h2>\n<table style=\"width:100%;border-collapse:collapse;margin-bottom:30px;font-size:0.9em;\">\n  <thead><tr style=\"background:#1a237e;color:white;\">\n    <th style=\"padding:10px;border:1px solid #ddd;\">Exigence reglementaire</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">ITIL Practice</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">COBIT Objective</th>\n    <th style=\"padding:10px;border:1px solid #ddd;\">Justification</th>\n  </tr></thead>\n  <tbody>${mappingHtml}</tbody>\n</table>\n\n<div style=\"background:#fff3e0;padding:15px;border-radius:5px;margin-top:30px;border-left:4px solid #f57c00;font-size:0.9em;\">\n  <strong>Avertissement :</strong> Ce kit a ete genere automatiquement par un agent IA fonde sur le RAG reglementaire. Il constitue une base de travail pour l'auditeur, qui doit valider et adapter chaque element au contexte specifique de l'entite auditee avant utilisation.\n</div>\n\n</body></html>\n`;\n\nreturn [{\n  json: {\n    audit_id: auditId,\n    email_subject: `[Kit Audit] ${kit.metadata.framework} ${kit.metadata.article} - ${kit.metadata.entite} - ${auditId}`,\n    email_html: html\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1776,
+        0
+      ],
+      "id": "6b7adadc-b8de-4c11-b118-2c7d0838e5ed",
+      "name": "Formater email HTML"
+    },
+    {
+      "parameters": {
+        "sendTo": "REPLACE_WITH_RECIPIENT_EMAIL",
+        "subject": "=={{ $json.email_subject }}",
+        "message": "=={{ $json.email_html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1984,
+        0
+      ],
+      "id": "368d20d9-38af-4afa-ae02-0bfb9bb3ab28",
+      "name": "Gmail - Envoi kit audit",
+      "webhookId": "REPLACE_WITH_YOUR_WEBHOOK_ID"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Vector store - Get EU Regulations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Vector store - Get EU Regulations",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector store - Get EU Regulations": {
+      "main": [
+        [
+          {
+            "node": "Preparer contexte audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparer contexte audit": {
+      "main": [
+        [
+          {
+            "node": "Agent Audit Kit Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent Audit Kit Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent Audit Kit Generator": {
+      "main": [
+        [
+          {
+            "node": "Parser Kit audit pour sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser Kit audit pour sheets": {
+      "main": [
+        [
+          {
+            "node": "Sheets - Append audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets - Append audit": {
+      "main": [
+        [
+          {
+            "node": "Formater email HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formater email HTML": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Envoi kit audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "3de40d1e-e730-471b-8d68-d4e9106f03e2",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "WORKFLOW_ID_PLACEHOLDER",
+  "tags": []
+}
